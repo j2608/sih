@@ -1,0 +1,8 @@
+{
+  "total_sessions": 1000,
+  "normal_sessions": 850,
+  "anomalous_sessions": 150,
+  "anomaly_rate": 0.15,
+  "total_flows": 5028,
+  "total_events": 26583
+}
