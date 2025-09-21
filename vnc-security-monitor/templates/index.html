@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VNC Security Monitor - Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: rgba(0,0,0,0.3);
+            padding: 1rem 2rem;
+            border-bottom: 2px solid #00e6e6;
+        }
+        
+        .header h1 {
+            color: #00e6e6;
+            text-shadow: 0 0 10px rgba(0,230,230,0.5);
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 2rem;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0,230,230,0.3);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        
+        .card h2 {
+            color: #00e6e6;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .stat-item {
+            background: rgba(0,0,0,0.2);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #00e6e6;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .alert-item {
+            background: rgba(0,0,0,0.2);
+            margin: 0.5rem 0;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+        
+        .alert-high { border-left-color: #ff4757; }
+        .alert-medium { border-left-color: #ffa502; }
+        .alert-low { border-left-color: #2ed573; }
+        
+        .alert-title {
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        .alert-time {
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+        
+        .controls {
+            grid-column: span 3;
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #00e6e6, #0099cc);
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,230,230,0.4);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(45deg, #ff4757, #ff3742);
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+        
+        .status-active { background: #2ed573; }
+        .status-inactive { background: #ff4757; }
+        
+        .traffic-chart {
+            height: 200px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .monitoring-active {
+            animation: pulse 2s infinite;
+        }
+        
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+        
+        .threat-item {
+            background: rgba(0,0,0,0.2);
+            margin: 0.5rem 0;
+            padding: 0.8rem;
+            border-radius: 6px;
+            border-left: 3px solid;
+            font-size: 0.9rem;
+        }
+        
+        .threat-high { border-left-color: #ff4757; }
+        .threat-medium { border-left-color: #ffa502; }
+        .threat-low { border-left-color: #2ed573; }
+        
+        .feature-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.3rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .feature-bar {
+            width: 60px;
+            height: 8px;
+            background: rgba(0,230,230,0.3);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .feature-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00e6e6, #0099cc);
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛡️ VNC Security Monitor</h1>
+        <p>Real-time detection and prevention of VNC-based data exfiltration attacks</p>
+    </div>
+    
+    <div class="dashboard">
+        <!-- Statistics Card -->
+        <div class="card">
+            <h2>📊 Security Statistics</h2>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number" id="totalAlerts">0</div>
+                    <div class="stat-label">Total Alerts</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="highRiskAlerts">0</div>
+                    <div class="stat-label">High Risk</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="fileTransfers">0</div>
+                    <div class="stat-label">File Transfers</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="clipboardEvents">0</div>
+                    <div class="stat-label">Clipboard Events</div>
+                </div>
+            </div>
+            <div class="status-indicator status-active monitoring-active"></div>
+            <span>Monitoring Active</span>
+        </div>
+        
+        <!-- Recent Alerts Card -->
+        <div class="card">
+            <h2>🚨 Recent Alerts</h2>
+            <div id="alertsList">
+                <div class="alert-item alert-low">
+                    <div class="alert-title">System Started</div>
+                    <div>VNC Security Monitor is now active</div>
+                    <div class="alert-time">Just now</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Traffic Analysis Card -->
+        <div class="card">
+            <h2>📈 Traffic Analysis</h2>
+            <div class="traffic-chart">
+                <div>Real-time traffic visualization</div>
+            </div>
+            <div style="margin-top: 1rem;">
+                <strong>Current Bandwidth:</strong> <span id="currentBandwidth">Normal</span><br>
+                <strong>Packets Analyzed:</strong> <span id="packetsAnalyzed">0</span>
+            </div>
+        </div>
+        
+        <!-- ML Insights Card -->
+        <div class="card">
+            <h2>🤖 ML Model Insights</h2>
+            <div id="mlInsights">
+                <div class="stat-item">
+                    <div class="stat-number" id="modelStatus">Loading...</div>
+                    <div class="stat-label">Model Status</div>
+                </div>
+                <div style="margin-top: 1rem;">
+                    <strong>Top Risk Factors:</strong>
+                    <div id="topFeatures" style="font-size: 0.9rem; margin-top: 0.5rem;"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Threat Matrix Card -->
+        <div class="card">
+            <h2>⚔️ Threat Scenarios</h2>
+            <div id="threatMatrix"></div>
+        </div>
+        
+        <!-- Remediation Card -->
+        <div class="card">
+            <h2>🛡️ Active Response</h2>
+            <div class="remediation-actions">
+                <button class="btn btn-small" onclick="showRemediationDemo()">Demo Remediation</button>
+                <div id="remediationLog" style="margin-top: 1rem; font-size: 0.9rem; max-height: 150px; overflow-y: auto;"></div>
+            </div>
+        </div>
+        
+        <!-- Attack Simulation Controls -->
+        <div class="controls">
+            <h2 style="width: 100%; text-align: center; margin-bottom: 1rem;">🎭 Attack Simulation & ML Analysis</h2>
+            <button class="btn" onclick="simulateAttack('file_transfer')">File Transfer Attack</button>
+            <button class="btn" onclick="simulateAttack('clipboard')">Clipboard Exfiltration</button>
+            <button class="btn" onclick="simulateAttack('database')">Database Dump</button>
+            <button class="btn" onclick="simulateAttack('encoded')">Encoded Data</button>
+            <button class="btn" onclick="simulateAttack('ml_analysis')" style="background: linear-gradient(45deg, #9b59b6, #8e44ad);">🤖 ML Analysis</button>
+            <button class="btn btn-danger" onclick="stopMonitoring()">Stop Monitoring</button>
+        </div>
+    </div>
+    
+    <script>
+        // Update dashboard data every 2 seconds
+        setInterval(updateDashboard, 2000);
+        setInterval(updateMLInsights, 5000);
+        setInterval(updateThreatMatrix, 10000);
+        
+        function updateDashboard() {
+            // Fetch statistics
+            fetch('/api/stats')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('totalAlerts').textContent = data.total_alerts;
+                    document.getElementById('highRiskAlerts').textContent = data.high_risk_alerts;
+                    document.getElementById('fileTransfers').textContent = data.file_transfers;
+                    document.getElementById('clipboardEvents').textContent = data.clipboard_events;
+                    document.getElementById('currentBandwidth').textContent = data.current_bandwidth;
+                    document.getElementById('packetsAnalyzed').textContent = data.current_bandwidth;
+                });
+            
+            // Fetch recent alerts
+            fetch('/api/alerts')
+                .then(response => response.json())
+                .then(alerts => {
+                    const alertsList = document.getElementById('alertsList');
+                    alertsList.innerHTML = '';
+                    
+                    alerts.slice(-5).reverse().forEach(alert => {
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = `alert-item alert-${alert.severity.toLowerCase()}`;
+                        
+                        const time = new Date(alert.timestamp).toLocaleTimeString();
+                        alertDiv.innerHTML = `
+                            <div class="alert-title">${alert.title}</div>
+                            <div>${alert.description}</div>
+                            <div class="alert-time">${time}</div>
+                        `;
+                        
+                        alertsList.appendChild(alertDiv);
+                    });
+                });
+        }
+        
+        function simulateAttack(attackType) {
+            fetch(`/api/simulate/${attackType}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Attack simulated:', data);
+                    // Show visual feedback
+                    const btn = event.target;
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Simulating...';
+                    btn.disabled = true;
+                    
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+                    }, 2000);
+                });
+        }
+        
+        function stopMonitoring() {
+            fetch('/api/stop_monitoring')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Monitoring stopped:', data);
+                    document.querySelector('.status-indicator').className = 'status-indicator status-inactive';
+                    document.querySelector('.monitoring-active').classList.remove('monitoring-active');
+                });
+        }
+        
+        function updateMLInsights() {
+            fetch('/api/ml_insights')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('modelStatus').textContent = 
+                        data.model_status === 'trained' ? 'Active' : 'Training';
+                    
+                    const topFeatures = document.getElementById('topFeatures');
+                    topFeatures.innerHTML = '';
+                    
+                    data.top_features.slice(0, 5).forEach(feature => {
+                        const featureDiv = document.createElement('div');
+                        featureDiv.className = 'feature-item';
+                        featureDiv.innerHTML = `
+                            <span>${feature.name.replace(/_/g, ' ')}</span>
+                            <div class="feature-bar">
+                                <div class="feature-fill" style="width: ${feature.importance * 100}%"></div>
+                            </div>
+                        `;
+                        topFeatures.appendChild(featureDiv);
+                    });
+                });
+        }
+        
+        function updateThreatMatrix() {
+            fetch('/api/threat_matrix')
+                .then(response => response.json())
+                .then(threats => {
+                    const threatMatrix = document.getElementById('threatMatrix');
+                    threatMatrix.innerHTML = '';
+                    
+                    threats.forEach(threat => {
+                        const threatDiv = document.createElement('div');
+                        threatDiv.className = `threat-item threat-${threat.risk_level.toLowerCase()}`;
+                        threatDiv.innerHTML = `
+                            <div style="font-weight: bold;">${threat.scenario}</div>
+                            <div style="font-size: 0.8rem; margin: 0.3rem 0;">${threat.detection_signals}</div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>Risk: ${threat.risk_level}</span>
+                                <span>Detected: ${threat.count}</span>
+                            </div>
+                        `;
+                        threatMatrix.appendChild(threatDiv);
+                    });
+                });
+        }
+        
+        function showRemediationDemo() {
+            const actions = ['terminate', 'block_ip', 'escalate'];
+            const action = actions[Math.floor(Math.random() * actions.length)];
+            const sessionId = 'demo-' + Math.floor(Math.random() * 1000);
+            
+            fetch(`/api/remediation/${sessionId}?action=${action}`)
+                .then(response => response.json())
+                .then(data => {
+                    const log = document.getElementById('remediationLog');
+                    const logEntry = document.createElement('div');
+                    logEntry.style.marginBottom = '0.5rem';
+                    logEntry.style.padding = '0.3rem';
+                    logEntry.style.background = 'rgba(0,230,230,0.1)';
+                    logEntry.style.borderRadius = '4px';
+                    logEntry.innerHTML = `
+                        <strong>${new Date().toLocaleTimeString()}</strong><br>
+                        ${data.message}
+                    `;
+                    log.insertBefore(logEntry, log.firstChild);
+                    
+                    // Keep only last 5 entries
+                    while (log.children.length > 5) {
+                        log.removeChild(log.lastChild);
+                    }
+                });
+        }
+        
+        // Initial load
+        updateDashboard();
+        updateMLInsights();
+        updateThreatMatrix();
+    </script>
+</body>
+</html>
